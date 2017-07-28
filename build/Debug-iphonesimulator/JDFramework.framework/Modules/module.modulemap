@@ -1,0 +1,6 @@
+framework module JDFramework {
+  umbrella header "JDFramework.h"
+
+  export *
+  module * { export * }
+}
