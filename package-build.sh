@@ -3,7 +3,7 @@
 #workspace=0
 workspace=0
 
-#-build build
+#-workspace 是否是workspace
 #选项和参数
 while [ -n "$1" ]
 do
@@ -34,54 +34,61 @@ YO_SCHEME=${PROJECT_NAME}
 
 
 function clean_project {
-    echo "清理build目录..."
+    echo "\033[33m 清理build目录... \033[0m"
     rm -rf ${LIB_OUTPUTFOLDER}/${PROJECT_NAME}.framework
     xcodebuild clean
 }
 
 function build_static_library {
+    sdkType=$1
+    configuration=$2
+    other_build=""
     #编译workspace
     if [ ${workspace} == 1 ];then
-        if [ $1 ==  iphonesimulator ]; then
-            echo "xcodebuild ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO -workspace ${WORKSPACE_NAME} -scheme ${YO_SCHEME} -sdk ${1} -configuration ${2}"
-            xcodebuild ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO -workspace ${WORKSPACE_NAME} -scheme ${YO_SCHEME} -sdk ${1} -configuration ${2}
-        else
-            echo "xcodebuild -workspace ${WORKSPACE_NAME} -scheme ${YO_SCHEME} -sdk ${1} -configuration ${2}"
-            xcodebuild -workspace ${WORKSPACE_NAME} -scheme ${YO_SCHEME} -sdk ${1} -configuration ${2}
+        if [ $sdkType ==  iphonesimulator ]; then
+            other_build="ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO"
         fi
-
-
+        echo "\033[33m xcodebuild ${other_build} -workspace ${WORKSPACE_NAME} -scheme ${YO_SCHEME} -sdk ${sdkType} -configuration ${configuration} \033[0m"
+        xcodebuild ${other_build} -workspace ${WORKSPACE_NAME} -scheme ${YO_SCHEME} -sdk ${sdkType} -configuration ${configuration} CONFIGURATION_BUILD_DIR=${OUTPUTFOLDER}/${configuration}-${sdkType}
     else
-
         #编译工程 打开这个注释你就可以编译project 但是注意要把下面的命令隐藏掉
         if [ $1 ==  iphonesimulator ]; then
-            echo "xcodebuild ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO  -target ${TARGET_NAME} -sdk ${1} -configuration ${2} clean build"
-            xcodebuild ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO  -target "${TARGET_NAME}" -sdk ${1} -configuration ${2} build
-        else
-            echo "xcodebuild   -target ${TARGET_NAME} -sdk ${1} -configuration ${2} clean build"
-            xcodebuild  -target "${TARGET_NAME}" -sdk ${1} -configuration ${2} build
+            other_build="ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO"
         fi
-
+        echo "\033[33m xcodebuild ${other_build} -target ${TARGET_NAME} -sdk ${sdkType} -configuration ${configuration} build \033[0m"
+        xcodebuild ${other_build} -target "${TARGET_NAME}" -sdk ${sdkType} -configuration ${configuration} build CONFIGURATION_BUILD_DIR=${OUTPUTFOLDER}/${configuration}-${sdkType}
     fi
-    
 }
 
-function make_fat_library {
-    xcrun lipo -create ${OUTPUTFOLDER}/$1-iphonesimulator/${PROJECT_NAME}.framework/${PROJECT_NAME} \
-    ${OUTPUTFOLDER}/$1-iphoneos/${PROJECT_NAME}.framework/${PROJECT_NAME} \
-    -output ${OUTPUTFOLDER}/$1-${OUTPUTFOLDER_SUFFIX}/${PROJECT_NAME}.framework/${PROJECT_NAME}
-}
 
 #重新创建目录
 function rmkdir_library {
-    rm -rf ${OUTPUTFOLDER}/${1}-${OUTPUTFOLDER_SUFFIX}
-    mkdir -p ${OUTPUTFOLDER}/${1}-${OUTPUTFOLDER_SUFFIX}
+    configuration=$1
+    rm -rf ${OUTPUTFOLDER}/${configuration}-${OUTPUTFOLDER_SUFFIX}
+    mkdir -p ${OUTPUTFOLDER}/${configuration}-${OUTPUTFOLDER_SUFFIX}
 }
 
 #拷贝一份头文件
 function cp_library_header {
-    cp -R ${OUTPUTFOLDER}/${1}-iphonesimulator/${PROJECT_NAME}.framework ${OUTPUTFOLDER}/${1}-${OUTPUTFOLDER_SUFFIX}/${PROJECT_NAME}.framework
+    configuration=$1
+    cp -R ${OUTPUTFOLDER}/${configuration}-iphonesimulator/${PROJECT_NAME}.framework ${OUTPUTFOLDER}/${configuration}-${OUTPUTFOLDER_SUFFIX}/${PROJECT_NAME}.framework
 }
+
+function make_fat_library {
+    configuration=$1
+    echo "\033[33m xcrun lipo -create ${OUTPUTFOLDER}/${configuration}-iphonesimulator/${PROJECT_NAME}.framework/${PROJECT_NAME} ${OUTPUTFOLDER}/${configuration}-iphoneos/${PROJECT_NAME}.framework/${PROJECT_NAME} -output ${OUTPUTFOLDER}/${configuration}-${OUTPUTFOLDER_SUFFIX}/${PROJECT_NAME}.framework/${PROJECT_NAME} \033[0m"
+
+    xcrun lipo -create ${OUTPUTFOLDER}/${configuration}-iphonesimulator/${PROJECT_NAME}.framework/${PROJECT_NAME} \
+    ${OUTPUTFOLDER}/${configuration}-iphoneos/${PROJECT_NAME}.framework/${PROJECT_NAME} \
+    -output ${OUTPUTFOLDER}/${configuration}-${OUTPUTFOLDER_SUFFIX}/${PROJECT_NAME}.framework/${PROJECT_NAME}
+
+    if [ $? -eq 0 ]; then
+        echo "\033[33m 👏👏👏build success \033[0m"
+    else
+        echo "\033[33m 😭😭😭build faild \033[0m"
+    fi
+}
+
 
 #根据环境编译
 function build_platform {
@@ -106,4 +113,3 @@ function build_platform {
 
 build_platform "Release"
 
-#open "${OUTPUTFOLDER}"
